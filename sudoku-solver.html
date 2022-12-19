@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Calistoga&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sudoku.css">
+    <title>Sudoku Solver</title>
+  </head>
+
+  <body>
+    <h1>Sudoku Solver</h1>
+    <p class="base-text">Enter your sudoku board's numbers and click "Submit" to generate its solution.</p>
+
+    <form id="sudoku-challenge-board">
+
+    </form>
+
+    <fieldset class="base-text">
+      <span>Is this Diagonal Sudoku (aka Extreme Sudoku or Sudoku-X)?</span>
+      <label>
+        <input type="radio" name="extreme-sudoku" value="yes" autocomplete="off" />
+        Yes
+      </label>
+      <label>
+        <input type="radio" name="extreme-sudoku" value="no" checked autocomplete="off" />
+        No
+      </label>
+    </fieldset>
+
+    <div id="form-btn-wrapper">
+      <button class="btn btn--submit" form="sudoku-challenge-board" type="button" onclick="handleSubmission()">Submit</button>
+      <button class="btn btn--clear" type="button" class="block-center" onclick="clearSudokuForm()">Clear</button>
+    </div>
+
+    <div id="form-errors" class="nodisplay">
+      <p class="base-text error-text" style="margin: 20px auto 10px auto">Invalid input. Encountered the following error(s):</p>
+      <ul id="error-list">
+
+      </ul>
+    </div>
+
+    <section id="solution-section" class="nodisplay">
+      <hr/>
+      <h2><span id="partial-solution-txt"></span>Solution:</h2>
+      <div id="sudoku-solution-board">
+
+      </div>
+    </section>
+
+  </body>
+
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  <script src="sudoku-solver.js"></script>
+
+</html>

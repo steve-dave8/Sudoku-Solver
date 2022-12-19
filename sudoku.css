@@ -1,0 +1,203 @@
+html {
+    font-size: 10px;
+}
+
+body {
+    margin: 0;
+    background-color: #e6e6ff;
+}
+
+h1 {
+    font-family: "Calistoga", cursive;
+    text-align: center;
+    text-decoration: underline;
+    font-size: 3rem;
+}
+
+h2 {
+    text-align: center;
+    font-size: 2.8rem;
+    text-decoration: underline;
+    font-weight: bold;
+    font-family: serif;
+}
+
+hr {
+    width: 95%;
+    color: #121212;
+}
+
+button {
+    cursor: pointer;
+}
+
+ul {
+    padding-inline-start: 0;
+}
+
+li {
+    font-size: 1.4rem;
+    text-align: center;
+}
+
+fieldset {
+    border: none;
+    padding: 5px 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    align-items: end;
+}
+
+/*Utility classes:*/
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.block-center {
+    display: block;
+    margin: 0 auto;
+}
+
+.nodisplay {
+    display: none;
+}
+
+.base-text {
+    font-size: 1.6rem;
+    margin: 20px;
+    text-align: center;
+}
+
+.error-text {
+    color: red;
+    font-weight: bold;
+}
+
+.gold-text {
+    color: #cbab00;
+}
+/*------------------------*/
+
+#sudoku-challenge-board,
+#sudoku-solution-board,
+.sudoku-region {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+#sudoku-challenge-board,
+#sudoku-solution-board {
+    width: 700px;
+    max-width: 95vw;
+    margin: 10px auto;
+    gap: 4px;
+    background-color: #828282;
+    border: 4px solid black;
+}
+
+#sudoku-solution-board {
+    margin-bottom: 30px;
+}
+
+.sudoku-region {
+    gap: 1px;
+    background-color: #c4c4c4;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 10px 5px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    border: none;
+}
+
+input[type="number"]:focus-visible {
+    outline: 2px solid green;
+    z-index: 10;
+}
+
+.cell-error {
+    background-color: #fcc;
+    color: red;
+}
+
+input[type="number"].cell-error:focus-visible {
+    outline-color: red;
+}
+
+/*Hide number stepper arrows:*/
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+/* Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+/*------------------------*/
+
+fieldset > label {
+    display: flex;
+    align-items: end;
+    gap: 5px;
+}
+
+input[type="radio"] {
+    width: 18px;
+    height: 18px;
+}
+
+#form-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 10px 40px;
+    flex-wrap: wrap;
+    margin: 20px auto;
+}
+
+.btn {
+    color: white;
+    font-size: 1.4rem;
+    border: 1px solid black;
+    margin: 5px;
+    padding: 4px 8px;
+}
+
+.btn--submit {
+    background: radial-gradient(#00b300, #004d00);
+    font-weight: bold;
+}
+
+.btn--clear {
+    background: radial-gradient(#e67300, #804000);
+    font-weight: bold;
+}
+
+.btn--submit:hover,
+.btn--clear:hover {
+    filter: sepia(0.7);
+}
+
+.cell-value {
+    font-size: 1.4rem;
+    padding: 10px 5px;
+    font-weight: bold;
+    width: 100%;
+    text-align: center;
+    font-family: "MS Shell Dlg 2";
+    background-color: #fff;
+}
+
+.cell-value.possibilities {
+    color: #0047b3;
+}

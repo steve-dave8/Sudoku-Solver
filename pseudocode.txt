@@ -1,0 +1,17 @@
+Solving a diabolical sudoku puzzle:
+
+1. FIND the nearest cell with 2 possible numbers (assuming one exists). 
+Alternately, find the nearest cell with the fewest possible numbers.
+
+2. Take the current sudoku grid and PUSH it to an array of nodes (for later reference if needed).
+Make 2 COPIES (ie two branches). Apply one possible number to one copy and apply the other 
+possible number to the other copy. PUSH the copies to an array of forks.
+
+3. Try to solve the first copy. IF solved then exit the solving loop.
+
+4. A dead end is reached when any cell has no value assigned and no possible numbers remaining.
+IF a branch has a dead end then move to the next branch without a dead end in the array of forks.
+ELSE IF a branch does not give a solution but does not have a dead end either, then go back to step 1 with this branch 
+and create two more branches.
+IF all branches have dead ends then return to step 1 and FIND the next cell with 2 possible numbers.
+(Marking the last picked cell as being a fork node may help with this).
