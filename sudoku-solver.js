@@ -32,7 +32,7 @@ class SudokuCellSolution extends SudokuCell {
     }
   }
 
-  removePossibleNumber = (number) => {
+  removePossibleNumber(number) {
     const index = this.possibleNumbers.findIndex(x => x == number);
     if (index !== -1) {
       this.possibleNumbers.splice(index, 1);
@@ -224,23 +224,24 @@ const handleSubmission = () => {
   else {
     errorListElement.innerHTML = "";
     formErrors.classList.add("nodisplay");
-    const sudokuBoard = [];
+    const initialBoard = [];
     let fullSolution = true; // assume there will be a complete solution
     Array.from(boardInput.elements).forEach((input) => {
       if (input.type === "number") { // exclude submit button from inputs
         const value = parseInt(input.value, 10) || null;
         const sudokuCell = new SudokuCellSolution(input.dataset.row, input.dataset.column, input.dataset.region, value);
-        sudokuBoard.push(sudokuCell);
+        initialBoard.push(sudokuCell);
       }
     });
+    let sudokuBoard = initialBoard;
 
-    const assignCellValue = (index, value) => {
-      sudokuBoard[index].value = value;
-      sudokuBoard[index].possibleNumbers = [];
+    const assignCellValue = (index, value, board = sudokuBoard) => {
+      board[index].value = value;
+      board[index].possibleNumbers = [];
     };
 
-    const narrowPossibilities = (chosenCell, defValue) => {
-      sudokuBoard.forEach((cell) => {
+    const narrowPossibilities = (chosenCell, defValue, board = sudokuBoard) => {
+      board.forEach((cell) => {
         if (
           cell.region == chosenCell.region 
           || cell.row == chosenCell.row 
@@ -264,6 +265,12 @@ const handleSubmission = () => {
     givens.forEach((given) => {
       narrowPossibilities(given, given.value);
     });
+
+    // Setup for diabolical sudoku if needed:
+    const forkNodes = [];
+    const forkBranches = [];
+    let currBranchIndex;
+    //--------------------------------------
 
     while (sudokuBoard.some(cell => !cell.value)) {
       // Solving Method 1 - check for a cell with only one possible number:
@@ -445,11 +452,63 @@ const handleSubmission = () => {
               });
             }
 
-            // TODO: find alternate solving methods.
             if (!rcExclusions) {
-              fullSolution = false;
-              console.log("Error: unable to solve.");
-              break;
+              // Solving method 5 -- bifurcation:
+              let multipleForks = false; // ie when a branch splits into more branches
+
+              if (forkBranches.length) {
+                let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
+
+                if (deadEndIndex !== -1) {
+                  forkBranches[currBranchIndex].hasDeadEnd = true;
+                  let nextBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
+
+                  // checkout the next branch without a dead end:
+                  if (nextBranchIndex !== -1) {
+                    currBranchIndex = nextBranchIndex;
+                    sudokuBoard = forkBranches[currBranchIndex].grid;
+                  } 
+                  // when all branches have dead ends return to the last node:
+                  else {
+                    sudokuBoard = forkNodes[forkBranches[currBranchIndex].nodeIndex];
+                  }
+
+                }
+                else {
+                  multipleForks = true;
+                }
+              }
+
+              if (!forkBranches.length || multipleForks) {
+                // assume there will be a cell with two possible numbers:
+                const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
+                if (nodeIndex !== -1) {
+                  // make a copy for later reference if needed:
+                  sudokuBoard[nodeIndex].isForkNode = true;
+                  const forkNode = _.cloneDeep(sudokuBoard);
+                  forkNodes.push(forkNode);
+                  // make branches:
+                  const choices = sudokuBoard[nodeIndex].possibleNumbers;
+                  choices.forEach(choice => {
+                    const branch = _.cloneDeep(sudokuBoard);
+                    assignCellValue(nodeIndex, choice, board = branch);
+                    narrowPossibilities(sudokuBoard[nodeIndex], choice, board = branch);
+                    forkBranches.push({
+                      grid: branch,
+                      hasDeadEnd: null,
+                      nodeIndex: forkNodes.length - 1
+                    });
+                  });
+
+                  currBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
+                  sudokuBoard = forkBranches[currBranchIndex].grid;
+                }
+                else {
+                  fullSolution = false;
+                  console.log("Error: unable to solve.");
+                  break;
+                }
+              }
             }
           }
         }
