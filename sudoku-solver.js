@@ -454,7 +454,7 @@ const handleSubmission = () => {
 
             if (!rcExclusions) {
               // Solving method 5 -- bifurcation:
-              let multipleForks = false; // ie when a branch splits into more branches
+              let multipleForks = false; // ie when a branch splits into more branches or when a grid has multiple branching points
 
               if (forkBranches.length) {
                 let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
@@ -471,6 +471,7 @@ const handleSubmission = () => {
                   // when all branches have dead ends return to the last node:
                   else {
                     sudokuBoard = forkNodes[forkBranches[currBranchIndex].nodeIndex];
+                    multipleForks = true;
                   }
 
                 }
