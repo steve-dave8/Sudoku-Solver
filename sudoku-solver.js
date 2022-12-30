@@ -84,7 +84,7 @@ for (let reg = 1; reg < 10; reg++) {
   blankSudokuGrid.push(sudokuRegion);
 }
 
-boardInput.innerHTML = blankSudokuGrid.map((region) =>
+boardInput.innerHTML = blankSudokuGrid.map(region =>
   `<div class="sudoku-region">
     ${region.map((cell) =>
       `<div class="flex-center">
@@ -96,7 +96,7 @@ boardInput.innerHTML = blankSudokuGrid.map((region) =>
 // --------------------
 
 const clearSudokuForm = () => {
-  Array.from(boardInput.elements).forEach((input) => {
+  Array.from(boardInput.elements).forEach(input => {
     if (input.type === "number") input.value = "";
   });
 };
@@ -135,7 +135,7 @@ const validateSudokuInput = (inputs) => {
 
   let givensCount = 0;
 
-  Array.from(inputs).forEach((input) => {
+  Array.from(inputs).forEach(input => {
     let error;
     const value = parseInt(input.value, 10);
 
@@ -149,11 +149,11 @@ const validateSudokuInput = (inputs) => {
       error = "number which is not an integer";
     } 
     else if (input.value.trim() !== "") {
-      const regIndex = regions.findIndex((region) => region.id == input.dataset.region);
+      const regIndex = regions.findIndex(region => region.id == input.dataset.region);
       regions[regIndex].values.push(value);
-      const rowIndex = rows.findIndex((row) => row.id == input.dataset.row);
+      const rowIndex = rows.findIndex(row => row.id == input.dataset.row);
       rows[rowIndex].values.push(value);
-      const colIndex = columns.findIndex((column) => column.id == input.dataset.column);
+      const colIndex = columns.findIndex(column => column.id == input.dataset.column);
       columns[colIndex].values.push(value);
       givensCount++;
 
@@ -171,33 +171,20 @@ const validateSudokuInput = (inputs) => {
     errorList.push(`a Sudoku grid must have at least 17 given numbers to produce a unique solution. Received ${givensCount} valid numbers.`);
   }
 
-  for (const region of regions) {
-    if (
-      region.values.length > 1 
-      && region.values.some((value, index) => index !== region.values.lastIndexOf(value))
-    ) {
-      errorList.push("number appears multiple times in a region");
-      break;
+  const validateArea = (areas, type) => {
+    for (const area of areas) {
+      if (
+        area.values.length > 1 
+        && area.values.some((value, index) => index !== area.values.lastIndexOf(value))
+      ) {
+        errorList.push(`number appears multiple times in a ${type}`);
+        break;
+      }
     }
   }
-  for (const row of rows) {
-    if (
-      row.values.length > 1 &&
-      row.values.some((value, index) => index !== row.values.lastIndexOf(value))
-    ) {
-      errorList.push("number appears multiple times in a row");
-      break;
-    }
-  }
-  for (const column of columns) {
-    if (
-      column.values.length > 1 &&
-      column.values.some((value, index) => index !== column.values.lastIndexOf(value))
-    ) {
-      errorList.push("number appears multiple times in a column");
-      break;
-    }
-  }
+  validateArea(regions, "region");
+  validateArea(rows, "row");
+  validateArea(columns, "column");
 
   if (isExtremeSudoku) {
     if (
@@ -215,76 +202,85 @@ const handleSubmission = () => {
   validateSudokuInput(boardInput.elements);
 
   if (errorList.length) {
-    errorListElement.innerHTML = errorList.map((error) => `<li>${error}</li>`).join("");
+    errorListElement.innerHTML = errorList.map(error => `<li>${error}</li>`).join("");
     formErrors.classList.remove("nodisplay");
     sudokuSolutionGrid.innerHTML = "";
     solutionSection.classList.add("nodisplay");
     window.scrollTo({top: document.documentElement.scrollHeight, behavior: "smooth"});
+    return;
   } 
-  else {
-    errorListElement.innerHTML = "";
-    formErrors.classList.add("nodisplay");
-    const initialBoard = [];
-    let fullSolution = true; // assume there will be a complete solution
-    Array.from(boardInput.elements).forEach((input) => {
-      if (input.type === "number") { // exclude submit button from inputs
-        const value = parseInt(input.value, 10) || null;
-        const sudokuCell = new SudokuCellSolution(input.dataset.row, input.dataset.column, input.dataset.region, value);
-        initialBoard.push(sudokuCell);
+
+  errorListElement.innerHTML = "";
+  formErrors.classList.add("nodisplay");
+  const initialBoard = [];
+  let fullSolution = true; // assume there will be a complete solution
+
+  Array.from(boardInput.elements).forEach(input => {
+    if (input.type === "number") { // exclude submit button from inputs
+      const value = parseInt(input.value, 10) || null;
+      const sudokuCell = new SudokuCellSolution(input.dataset.row, input.dataset.column, input.dataset.region, value);
+      initialBoard.push(sudokuCell);
+    }
+  });
+
+  let sudokuBoard = initialBoard;
+
+  const assignCellValue = (index, value, board = sudokuBoard) => {
+    board[index].value = value;
+    board[index].possibleNumbers = [];
+  };
+
+  const narrowPossibilities = (chosenCell, defValue, board = sudokuBoard) => {
+    board.forEach((cell) => {
+      if (
+        cell.region == chosenCell.region 
+        || cell.row == chosenCell.row 
+        || cell.column == chosenCell.column
+      ) {
+        cell.removePossibleNumber(defValue);
       }
-    });
-    let sudokuBoard = initialBoard;
-
-    const assignCellValue = (index, value, board = sudokuBoard) => {
-      board[index].value = value;
-      board[index].possibleNumbers = [];
-    };
-
-    const narrowPossibilities = (chosenCell, defValue, board = sudokuBoard) => {
-      board.forEach((cell) => {
+      if (isExtremeSudoku) {
         if (
-          cell.region == chosenCell.region 
-          || cell.row == chosenCell.row 
-          || cell.column == chosenCell.column
+          (cell.onBackslashDiag && chosenCell.onBackslashDiag) 
+          || (cell.onForwardslashDiag && chosenCell.onForwardslashDiag)
         ) {
           cell.removePossibleNumber(defValue);
         }
-        if (isExtremeSudoku) {
-          if (
-            (cell.onBackslashDiag && chosenCell.onBackslashDiag) 
-            || (cell.onForwardslashDiag && chosenCell.onForwardslashDiag)
-          ) {
-            cell.removePossibleNumber(defValue);
-          }
-        }
-      });
-    };
-
-    // Scan given numbers first:
-    const givens = sudokuBoard.filter((cell) => cell.given);
-    givens.forEach((given) => {
-      narrowPossibilities(given, given.value);
-    });
-
-    // Setup for diabolical sudoku if needed:
-    const forkNodes = [];
-    const forkBranches = [];
-    let currBranchIndex;
-    //--------------------------------------
-
-    while (sudokuBoard.some(cell => !cell.value)) {
-      // Solving Method 1 - check for a cell with only one possible number:
-      const index = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 1);
-      if (index !== -1) {
-        const chosenCell = sudokuBoard[index];
-        const defValue = sudokuBoard[index].possibleNumbers[0];
-        assignCellValue(index, defValue);
-        narrowPossibilities(chosenCell, defValue);
       }
-      else {
-        // Solving Method 2 - search for cells with a lone number:
-        /* (explanation: if among a cell's possible numbers one possibility only occurs once 
-        in that region's cells then it must belong to that cell. Similarly for cells in a row/column.) */
+    });
+  };
+
+  // Scan given numbers first:
+  const givens = sudokuBoard.filter(cell => cell.given);
+  givens.forEach(given => {
+    narrowPossibilities(given, given.value);
+  });
+
+  // Setup for diabolical sudoku if needed:
+  const forkNodes = [];
+  const forkBranches = [];
+  let currBranchIndex;
+  //--------------------------------------
+
+  let method = "1"; // solving method from least to most complex
+
+  solvingLoop : while (sudokuBoard.some(cell => !cell.value)) {
+    switch (method) {
+      // Solving Method 1 - check for a cell with only one possible number:
+      case "1":
+        const index = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 1);
+        if (index !== -1) {
+          const chosenCell = sudokuBoard[index];
+          const defValue = sudokuBoard[index].possibleNumbers[0];
+          assignCellValue(index, defValue);
+          narrowPossibilities(chosenCell, defValue);
+          break;
+        }
+
+      // Solving Method 2 - search for cells with a lone number:
+      /* (explanation: if among a cell's possible numbers one possibility only occurs once 
+      in that region's cells then it must belong to that cell. Similarly for cells in a row/column.) */
+      case "2":
         let hasLoneNumber = false;
 
         const findLoneNumberByArea = (areas) => {
@@ -319,225 +315,226 @@ const handleSubmission = () => {
           if (regionCells.length) regions.push({ id: i, cells: [...regionCells] }); // skip regions that are fully solved
         }
         findLoneNumberByArea(regions);
+        if (hasLoneNumber) break;
 
-        if (!hasLoneNumber) {
-          let rows = [];
-          for (let i = 1; i <= 9; i++) {
-            let rowCells = sudokuBoard.filter(cell => !cell.value && cell.row == i);
-            if (rowCells.length) rows.push({ id: i, cells: [...rowCells] });
-          }
-          findLoneNumberByArea(rows);
+        let rows = [];
+        for (let i = 1; i <= 9; i++) {
+          let rowCells = sudokuBoard.filter(cell => !cell.value && cell.row == i);
+          if (rowCells.length) rows.push({ id: i, cells: [...rowCells] });
         }
+        findLoneNumberByArea(rows);
+        if (hasLoneNumber) break;
 
-        if (!hasLoneNumber) {
-          let columns = [];
-          for (let i = 1; i <= 9; i++) {
-            let columnCells = sudokuBoard.filter(cell => !cell.value && cell.column == i);
-            if (columnCells.length) columns.push({ id: i, cells: [...columnCells] });
-          }
-          findLoneNumberByArea(columns);
+        let columns = [];
+        for (let i = 1; i <= 9; i++) {
+          let columnCells = sudokuBoard.filter(cell => !cell.value && cell.column == i);
+          if (columnCells.length) columns.push({ id: i, cells: [...columnCells] });
         }
+        findLoneNumberByArea(columns);
+        if (hasLoneNumber) break;
 
-        if (!hasLoneNumber) {
-          // Solving Method 3 - pair exclusion:
-          /* (explanation: if two cells in a region each have only two possible numbers that are the same
-          values then those values cannot appear in any other cells in that region. If those pairs occur in the
-          same row/column then they cannot appear in any other region of that row/column.) */
-          let hasPair = false;
-          let exclusions = 0;
+      // Solving Method 3 - pair exclusion:
+      /* (explanation: if two cells in a region each have only two possible numbers that are the same
+      values then those values cannot appear in any other cells in that region. If those pairs occur in the
+      same row/column then they cannot appear in any other region of that row/column.) */
+      case "3":
+        let exclusions = 0;
 
-          for (let i = 0; i < regions.length; i++) {
-            if (regions[i].cells.every(cell => cell.possibleNumbers.length === 2)) {
-              continue;
-            }
-            let possiblePairs = [];
-            regions[i].cells.forEach(cell => {
-              if (cell.possibleNumbers.length === 2) possiblePairs.push(cell);
-            });
+        for (let i = 0; i < regions.length; i++) {
+          if (regions[i].cells.every(cell => cell.possibleNumbers.length === 2)) {
+            continue;
+          }
 
-            let pairs = [];
-            for (let j = 0; j < possiblePairs.length - 1; j++) {
-              for (let k = j + 1; k < possiblePairs.length; k++) {
-                if (possiblePairs[j].possibleNumbers.every((num, index) => num === possiblePairs[k].possibleNumbers[index])) {
-                  const pair = {
-                    values: [...possiblePairs[j].possibleNumbers],
-                    region: possiblePairs[j].region,
-                    sharedRow: possiblePairs[j].row === possiblePairs[k].row && possiblePairs[j].row,
-                    sharedColumn: possiblePairs[j].column === possiblePairs[k].column && possiblePairs[j].column
-                  }
-                  pairs.push(pair);
-                  hasPair = true;
+          let possiblePairs = [];
+          regions[i].cells.forEach(cell => {
+            if (cell.possibleNumbers.length === 2) possiblePairs.push(cell);
+          });
+
+          let pairs = [];
+          for (let j = 0; j < possiblePairs.length - 1; j++) {
+            for (let k = j + 1; k < possiblePairs.length; k++) {
+              if (possiblePairs[j].possibleNumbers.every((num, index) => num === possiblePairs[k].possibleNumbers[index])) {
+                const pair = {
+                  values: [...possiblePairs[j].possibleNumbers],
+                  region: possiblePairs[j].region,
+                  sharedRow: possiblePairs[j].row === possiblePairs[k].row && possiblePairs[j].row,
+                  sharedColumn: possiblePairs[j].column === possiblePairs[k].column && possiblePairs[j].column
                 }
+                pairs.push(pair);
               }
             }
-
-            pairs.forEach(pair => {
-              sudokuBoard.forEach((cell, index) => {
-                if (!cell.value) {
-                  let exclude = false;
-                  if (cell.region === pair.region) {
-                    if (!(
-                      cell.possibleNumbers.length === pair.values.length 
-                      && cell.possibleNumbers.every((num, index) => num === pair.values[index])
-                    )) {
-                      exclude = true;
-                    }
-                  }
-                  else if (pair.sharedRow === cell.row || pair.sharedColumn === cell.column) {
-                    exclude = true;
-                  }
-
-                  if (exclude) {
-                    const len1 = cell.possibleNumbers.length;
-                    pair.values.forEach(value => {
-                      cell.removePossibleNumber(value);
-                    });
-                    const len2 = sudokuBoard[index].possibleNumbers.length;
-                    exclusions += len1 - len2;
-                  }
-                }
-              });
-            });
           }
 
-          if (!hasPair || !exclusions) {
-            // Solving Method 4: row/column exclusion:
-            /* (explanation: if among a region's cells' possible numbers one possibility only appears in a single
-            row/column then that number cannot appear in any other region of that row/column.) */
-            let rcExclusions = 0;
+          pairs.forEach(pair => {
+            sudokuBoard.forEach((cell, index) => {
+              if (!cell.value) return;
 
-            for (let i = 0; i < regions.length; i++) {
-              // Get unassigned numbers for a region and note which rows and columns they could possibily belong to:
-              const availableNums = [];
-              regions[i].cells.forEach(cell => {
-                cell.possibleNumbers.forEach(num => {
-                  let anIndex = availableNums.findIndex(an => an.value === num);
-                  if (anIndex === -1) {
-                    const availableNum = {
-                      value: num,
-                      rows: [cell.row],
-                      columns: [cell.column]
-                    }
-                    availableNums.push(availableNum);
-                  }
-                  else {
-                    const {rows, columns} = availableNums[anIndex];
-                    if (!rows.includes(cell.row)) availableNums[anIndex].rows.push(cell.row);
-                    if (!columns.includes(cell.column)) availableNums[anIndex].columns.push(cell.column);
-                  }
+              let exclude = false;
+              
+              if (cell.region === pair.region) {
+                if (!(
+                  cell.possibleNumbers.length === pair.values.length 
+                  && cell.possibleNumbers.every((num, index) => num === pair.values[index])
+                )) {
+                  exclude = true;
+                }
+              }
+              else if (pair.sharedRow === cell.row || pair.sharedColumn === cell.column) {
+                exclude = true;
+              }
+
+              if (exclude) {
+                const len1 = cell.possibleNumbers.length;
+                pair.values.forEach(value => {
+                  cell.removePossibleNumber(value);
                 });
-              });
+                const len2 = sudokuBoard[index].possibleNumbers.length;
+                exclusions += len1 - len2;
+              }
+            });
+          });
+        }
 
-              availableNums.forEach(an => {
-                if (an.rows.length === 1) {
-                  sudokuBoard.forEach(cell => {
-                    if (!cell.value && cell.region != regions[i].id) {
-                      if (cell.row === an.rows[0] && cell.possibleNumbers.includes(an.value)) {
-                        cell.removePossibleNumber(an.value);
-                        rcExclusions++;
-                      }
-                    }
-                  });
+        if (exclusions) break;
+
+      // Solving Method 4: row/column exclusion:
+      /* (explanation: if among a region's cells' possible numbers one possibility only appears in a single
+      row/column then that number cannot appear in any other region of that row/column.) */
+      case "4":
+        let rcExclusions = 0;
+
+        for (let i = 0; i < regions.length; i++) {
+          // Get unassigned numbers for a region and note which rows and columns they could possibily belong to:
+          const availableNums = [];
+          regions[i].cells.forEach(cell => {
+            cell.possibleNumbers.forEach(num => {
+              let anIndex = availableNums.findIndex(an => an.value === num);
+              if (anIndex === -1) {
+                const availableNum = {
+                  value: num,
+                  rows: [cell.row],
+                  columns: [cell.column]
                 }
-                else if (an.columns.length === 1) {
-                  sudokuBoard.forEach(cell => {
-                    if (!cell.value && cell.region != regions[i].id) {
-                      if (cell.column === an.columns[0] && cell.possibleNumbers.includes(an.value)) {
-                        cell.removePossibleNumber(an.value);
-                        rcExclusions++;
-                      }
-                    }
-                  });
-                }
-              });
-            }
+                availableNums.push(availableNum);
+              }
+              else {
+                const {rows, columns} = availableNums[anIndex];
+                if (!rows.includes(cell.row)) availableNums[anIndex].rows.push(cell.row);
+                if (!columns.includes(cell.column)) availableNums[anIndex].columns.push(cell.column);
+              }
+            });
+          });
 
-            if (!rcExclusions) {
-              // Solving method 5 -- bifurcation:
-              let multipleForks = false; // ie when a branch splits into more branches or when a grid has multiple branching points
-
-              if (forkBranches.length) {
-                let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
-
-                if (deadEndIndex !== -1) {
-                  forkBranches[currBranchIndex].hasDeadEnd = true;
-                  let nextBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
-
-                  // checkout the next branch without a dead end:
-                  if (nextBranchIndex !== -1) {
-                    currBranchIndex = nextBranchIndex;
-                    sudokuBoard = forkBranches[currBranchIndex].grid;
-                  } 
-                  // when all branches have dead ends return to the last node:
-                  else {
-                    sudokuBoard = forkNodes[forkBranches[currBranchIndex].nodeIndex];
-                    multipleForks = true;
-                  }
-
-                }
-                else {
-                  multipleForks = true;
+          const rcExclusion = (an, areas) => {
+            let areaType = areas.slice(0, -1);
+            sudokuBoard.forEach(cell => {
+              if (!cell.value && cell.region != regions[i].id) {
+                if (cell[areaType] === an[areas][0] && cell.possibleNumbers.includes(an.value)) {
+                  cell.removePossibleNumber(an.value);
+                  rcExclusions++;
                 }
               }
+            });
+          }
 
-              if (!forkBranches.length || multipleForks) {
-                // assume there will be a cell with two possible numbers:
-                const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
-                if (nodeIndex !== -1) {
-                  // make a copy for later reference if needed:
-                  sudokuBoard[nodeIndex].isForkNode = true;
-                  const forkNode = _.cloneDeep(sudokuBoard);
-                  forkNodes.push(forkNode);
-                  // make branches:
-                  const choices = sudokuBoard[nodeIndex].possibleNumbers;
-                  choices.forEach(choice => {
-                    const branch = _.cloneDeep(sudokuBoard);
-                    assignCellValue(nodeIndex, choice, board = branch);
-                    narrowPossibilities(sudokuBoard[nodeIndex], choice, board = branch);
-                    forkBranches.push({
-                      grid: branch,
-                      hasDeadEnd: null,
-                      nodeIndex: forkNodes.length - 1
-                    });
-                  });
-
-                  currBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
-                  sudokuBoard = forkBranches[currBranchIndex].grid;
-                }
-                else {
-                  fullSolution = false;
-                  console.log("Error: unable to solve.");
-                  break;
-                }
-              }
+          availableNums.forEach(an => {
+            if (an.rows.length === 1) {
+              rcExclusion(an, "rows");
             }
+            else if (an.columns.length === 1) {
+              rcExclusion(an, "columns");
+            }
+          });
+        }
+
+        if (rcExclusions) break;
+
+      // Solving method 5 -- bifurcation:
+      case "5":
+        let multipleForks = false; // ie when a branch splits into more branches or when a grid has multiple branching points
+
+        if (forkBranches.length) {
+          let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
+
+          if (deadEndIndex !== -1) {
+            forkBranches[currBranchIndex].hasDeadEnd = true;
+            let nextBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
+
+            // checkout the next branch without a dead end:
+            if (nextBranchIndex !== -1) {
+              currBranchIndex = nextBranchIndex;
+              sudokuBoard = forkBranches[currBranchIndex].grid;
+            } 
+            // when all branches have dead ends return to the last node:
+            else {
+              sudokuBoard = forkNodes[forkBranches[currBranchIndex].nodeIndex];
+              multipleForks = true;
+            }
+
+          }
+          else {
+            multipleForks = true;
           }
         }
-      }
+
+        if (!forkBranches.length || multipleForks) {
+          // assume there will be a cell with two possible numbers:
+          const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
+          if (nodeIndex !== -1) {
+            sudokuBoard[nodeIndex].isForkNode = true;
+            // make a copy for later reference if needed:
+            const forkNode = _.cloneDeep(sudokuBoard);
+            forkNodes.push(forkNode);
+            // make branches:
+            const choices = sudokuBoard[nodeIndex].possibleNumbers;
+            choices.forEach(choice => {
+              const branch = _.cloneDeep(sudokuBoard);
+              assignCellValue(nodeIndex, choice, board = branch);
+              narrowPossibilities(sudokuBoard[nodeIndex], choice, board = branch);
+              forkBranches.push({
+                grid: branch,
+                hasDeadEnd: null,
+                nodeIndex: forkNodes.length - 1
+              });
+            });
+
+            currBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
+            sudokuBoard = forkBranches[currBranchIndex].grid;
+          }
+          else {
+            method = "error";
+          }
+        }
+        break;
+
+      case "error":
+        fullSolution = false;
+        console.log("Error: unable to solve.");
+        break solvingLoop;
     }
-
-    const solutionBoard = [];
-    for (let reg = 1; reg < 10; reg++) {
-      const sudokuRegion = sudokuBoard.filter((cell) => cell.region == reg);
-      solutionBoard.push(sudokuRegion);
-    }
-
-    sudokuSolutionGrid.innerHTML = solutionBoard.map((region) =>
-      `<div class="sudoku-region">
-        ${region.map((cell) =>
-          `<div class="flex-center ${cell.given ? "" : "gold-text"}">
-            ${cell.value 
-              ? `<span class="cell-value">${cell.value}</span>`
-              : `<span class="cell-value possibilities">${cell.possibleNumbers.join()}</span>`
-            }
-          </div>`)
-        .join("")}
-      </div>`)
-    .join("");
-
-    partialSolutionText.innerHTML = fullSolution ? "" : "Partial ";
-    solutionSection.classList.remove("nodisplay");
-
-    window.scrollTo({top: document.documentElement.scrollHeight, behavior: "smooth"});
   }
+
+  const solutionBoard = [];
+  for (let reg = 1; reg < 10; reg++) {
+    const sudokuRegion = sudokuBoard.filter(cell => cell.region == reg);
+    solutionBoard.push(sudokuRegion);
+  }
+
+  sudokuSolutionGrid.innerHTML = solutionBoard.map(region =>
+    `<div class="sudoku-region">
+      ${region.map(cell =>
+        `<div class="flex-center ${cell.given ? "" : "gold-text"}">
+          ${cell.value 
+            ? `<span class="cell-value">${cell.value}</span>`
+            : `<span class="cell-value possibilities">${cell.possibleNumbers.join()}</span>`
+          }
+        </div>`
+      ).join("")}
+    </div>`
+  ).join("");
+
+  partialSolutionText.innerHTML = fullSolution ? "" : "Partial ";
+  solutionSection.classList.remove("nodisplay");
+
+  window.scrollTo({top: document.documentElement.scrollHeight, behavior: "smooth"});
 };
