@@ -298,6 +298,7 @@ const handleSubmission = () => {
               if (subscripts[num] == 1) {
                 const defValue = parseInt(num, 10);
                 const areasCell = areas[i].cells.find(cell => cell.possibleNumbers.includes(defValue));
+                if (!areasCell) continue;
                 const index = sudokuBoard.findIndex(cell => cell.row == areasCell.row && cell.column == areasCell.column);
                 const chosenCell = sudokuBoard[index];
                 assignCellValue(index, defValue);
@@ -336,66 +337,88 @@ const handleSubmission = () => {
       // Solving Method 3 - pair exclusion:
       /* (explanation: if two cells in a region each have only two possible numbers that are the same
       values then those values cannot appear in any other cells in that region. If those pairs occur in the
-      same row/column then they cannot appear in any other region of that row/column.) */
+      same row/column then they cannot appear in any other region of that row/column. Similarly,
+      if two cells in a row/column each have only two possible numbers that are the same values then those 
+      values cannot appear in any other cells in that row/column.) */
       case "3":
-        let exclusions = 0;
+        let groupExclusions = 0;
 
-        for (let i = 0; i < regions.length; i++) {
-          if (regions[i].cells.every(cell => cell.possibleNumbers.length === 2)) {
-            continue;
-          }
-
-          let possiblePairs = [];
-          regions[i].cells.forEach(cell => {
-            if (cell.possibleNumbers.length === 2) possiblePairs.push(cell);
-          });
-
-          let pairs = [];
-          for (let j = 0; j < possiblePairs.length - 1; j++) {
-            for (let k = j + 1; k < possiblePairs.length; k++) {
-              if (possiblePairs[j].possibleNumbers.every((num, index) => num === possiblePairs[k].possibleNumbers[index])) {
-                const pair = {
-                  values: [...possiblePairs[j].possibleNumbers],
-                  region: possiblePairs[j].region,
-                  sharedRow: possiblePairs[j].row === possiblePairs[k].row && possiblePairs[j].row,
-                  sharedColumn: possiblePairs[j].column === possiblePairs[k].column && possiblePairs[j].column
-                }
-                pairs.push(pair);
-              }
-            }
-          }
-
-          pairs.forEach(pair => {
-            sudokuBoard.forEach((cell, index) => {
-              if (!cell.value) return;
-
-              let exclude = false;
-              
-              if (cell.region === pair.region) {
-                if (!(
-                  cell.possibleNumbers.length === pair.values.length 
-                  && cell.possibleNumbers.every((num, index) => num === pair.values[index])
-                )) {
-                  exclude = true;
-                }
-              }
-              else if (pair.sharedRow === cell.row || pair.sharedColumn === cell.column) {
-                exclude = true;
-              }
-
-              if (exclude) {
-                const len1 = cell.possibleNumbers.length;
-                pair.values.forEach(value => {
-                  cell.removePossibleNumber(value);
-                });
-                const len2 = sudokuBoard[index].possibleNumbers.length;
-                exclusions += len1 - len2;
-              }
+        // The function below uses the regions, columns, and rows arrays generated in case 2 above.
+        const excludeGroupByArea = (areas, areaName, groupCount) => {
+          for (let i = 0; i < areas.length; i++) {
+            if (areas[i].cells.length === groupCount) continue;
+  
+            const possibleGroups = [];
+            areas[i].cells.forEach(cell => {
+              if (cell.possibleNumbers.length === groupCount) possibleGroups.push(cell);
             });
-          });
+  
+            const groups = [];
+            for (let j = 0; j < possibleGroups.length - (groupCount - 1); j++) {
+              let combo = possibleGroups[j].possibleNumbers.join("");
+              if (groups.length && groups.some(group => group.values.join("") === combo)) continue; // only take unique groups
+              let comboCount = 0;
+              const indices = [];
+              possibleGroups.forEach((group, index) => {
+                if (combo === group.possibleNumbers.join("")) {
+                  comboCount++;
+                  indices.push(index);
+                } 
+              });
+              if (comboCount === groupCount) {
+                const group = {
+                  values: [...possibleGroups[j].possibleNumbers]
+                }
+                group[areaName] = areas[i].id;
+                if (groupCount === 2 && areaName === "region") {
+                  group.sharedRow = possibleGroups[indices[0]].row === possibleGroups[indices[1]].row && possibleGroups[indices[0]].row,
+                  group.sharedColumn = possibleGroups[indices[0]].column === possibleGroups[indices[1]].column && possibleGroups[indices[0]].column
+                }
+                groups.push(group);
+              };
+            }
+  
+            groups.forEach(group => {
+              sudokuBoard.forEach((cell, index) => {
+                if (cell.value) return;
+  
+                let exclude = false;
+                
+                if (cell[areaName] == group[areaName]) {
+                  if (!(
+                    cell.possibleNumbers.length === group.values.length 
+                    && cell.possibleNumbers.every((num, index) => num === group.values[index])
+                  )) {
+                    exclude = true;
+                  }
+                }
+                else if (areaName === "region") {
+                  if (group.sharedRow === cell.row || group.sharedColumn === cell.column) {
+                    exclude = true;
+                  }
+                }
+  
+                if (exclude) {
+                  const len1 = cell.possibleNumbers.length;
+                  group.values.forEach(value => {
+                    cell.removePossibleNumber(value);
+                  });
+                  const len2 = sudokuBoard[index].possibleNumbers.length;
+                  groupExclusions += len1 - len2;
+                }
+              });
+            });
+          }
         }
 
-        if (exclusions) break;
+        excludeGroupByArea(regions, "region", 2);
+        if (groupExclusions) break;
+
+        excludeGroupByArea(rows, "row", 2);
+        if (groupExclusions) break;
+
+        excludeGroupByArea(columns, "column", 2);
+        if (groupExclusions) break;
 
       // Solving Method 4: row/column exclusion:
       /* (explanation: if among a region's cells' possible numbers one possibility only appears in a single
@@ -449,8 +472,21 @@ const handleSubmission = () => {
 
         if (rcExclusions) break;
 
-      // Solving method 5 -- bifurcation:
+      // Solving Method 5 - triplet exclusion:
+      /* (explanation: if three cells in a region/row/column each have only three possible numbers that are the same
+      values then those values cannot appear in any other cells in that region/row/column. */
       case "5":
+        excludeGroupByArea(regions, "region", 3);
+        if (groupExclusions) break;
+
+        excludeGroupByArea(rows, "row", 3);
+        if (groupExclusions) break;
+
+        excludeGroupByArea(columns, "column", 3);
+        if (groupExclusions) break;
+
+      // Solving method 6 -- bifurcation:
+      case "6":
         let multipleForks = false; // ie when a branch splits into more branches or when a grid has multiple branching points
 
         if (forkBranches.length) {
@@ -477,6 +513,8 @@ const handleSubmission = () => {
           }
         }
 
+        // TODO: improve this with a linked list or some other data structure.
+
         if (!forkBranches.length || multipleForks) {
           // assume there will be a cell with two possible numbers:
           const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
@@ -489,8 +527,8 @@ const handleSubmission = () => {
             const choices = sudokuBoard[nodeIndex].possibleNumbers;
             choices.forEach(choice => {
               const branch = _.cloneDeep(sudokuBoard);
-              assignCellValue(nodeIndex, choice, board = branch);
-              narrowPossibilities(sudokuBoard[nodeIndex], choice, board = branch);
+              assignCellValue(nodeIndex, choice, branch);
+              narrowPossibilities(branch[nodeIndex], choice, branch);
               forkBranches.push({
                 grid: branch,
                 hasDeadEnd: null,
