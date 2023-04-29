@@ -257,9 +257,10 @@ const handleSubmission = () => {
   });
 
   // Setup for diabolical sudoku if needed:
-  const forkNodes = [];
-  const forkBranches = [];
-  let currBranchIndex;
+  let forkTree = null;
+  let nextNodeID = 1;
+  let lastParentID;
+  let currNode;
   //--------------------------------------
 
   let method = "1"; // solving method from least to most complex
@@ -487,57 +488,74 @@ const handleSubmission = () => {
 
       // Solving method 6 -- bifurcation:
       case "6":
-        let multipleForks = false; // ie when a branch splits into more branches or when a grid has multiple branching points
-
-        if (forkBranches.length) {
-          let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
-
-          if (deadEndIndex !== -1) {
-            forkBranches[currBranchIndex].hasDeadEnd = true;
-            let nextBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
-
-            // checkout the next branch without a dead end:
-            if (nextBranchIndex !== -1) {
-              currBranchIndex = nextBranchIndex;
-              sudokuBoard = forkBranches[currBranchIndex].grid;
-            } 
-            // when all branches have dead ends return to the last node:
-            else {
-              sudokuBoard = forkNodes[forkBranches[currBranchIndex].nodeIndex];
-              multipleForks = true;
-            }
-
-          }
-          else {
-            multipleForks = true;
-          }
+        const makeBranches = (nodeIndex) => {
+          const choices = sudokuBoard[nodeIndex].possibleNumbers;
+          choices.forEach(choice => {
+            const branch = _.cloneDeep(sudokuBoard);
+            assignCellValue(nodeIndex, choice, branch);
+            narrowPossibilities(branch[nodeIndex], choice, branch);
+            forkTree.add(branch, nextNodeID, lastParentID);
+            nextNodeID++;
+          });
         }
 
-        // TODO: improve this with a linked list or some other data structure.
-
-        if (!forkBranches.length || multipleForks) {
+        if (!forkTree) {
           // assume there will be a cell with two possible numbers:
           const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
           if (nodeIndex !== -1) {
             sudokuBoard[nodeIndex].isForkNode = true;
-            // make a copy for later reference if needed:
             const forkNode = _.cloneDeep(sudokuBoard);
-            forkNodes.push(forkNode);
-            // make branches:
-            const choices = sudokuBoard[nodeIndex].possibleNumbers;
-            choices.forEach(choice => {
-              const branch = _.cloneDeep(sudokuBoard);
-              assignCellValue(nodeIndex, choice, branch);
-              narrowPossibilities(branch[nodeIndex], choice, branch);
-              forkBranches.push({
-                grid: branch,
-                hasDeadEnd: null,
-                nodeIndex: forkNodes.length - 1
-              });
-            });
+            forkTree = new Tree(forkNode, nextNodeID);
+            lastParentID = nextNodeID;
+            nextNodeID++;
+            makeBranches(nodeIndex);
+            currNode = forkTree.root.children[0];
+            sudokuBoard = currNode.grid;
+          }
+          else {
+            method = "error";
+          }
+          break;
+        }
 
-            currBranchIndex = forkBranches.findIndex(branch => !branch.hasDeadEnd);
-            sudokuBoard = forkBranches[currBranchIndex].grid;
+        let deadEndIndex = sudokuBoard.findIndex(cell => !cell.value && !cell.possibleNumbers.length);
+
+        if (deadEndIndex !== -1) { // if there is a dead end
+          currNode.hasDeadEnd = true;
+          let liveLeaf = forkTree.findLiveLeaf();
+          
+          // checkout the next node leaf without a dead end:
+          if (liveLeaf !== null) {
+            currNode = liveLeaf;
+            sudokuBoard = currNode.grid;
+          } 
+          // when all nodes have dead ends then make a new tree:
+          else {
+            sudokuBoard = forkTree.root.grid;
+            const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
+            if (nodeIndex !== -1) {
+              sudokuBoard[nodeIndex].isForkNode = true;
+              const forkNode = _.cloneDeep(sudokuBoard);
+              forkTree = new Tree(forkNode, nextNodeID);
+              lastParentID = nextNodeID;
+              nextNodeID++;
+              makeBranches(nodeIndex);
+              currNode = forkTree.root.children[0];
+              sudokuBoard = currNode.grid;
+            }
+            else {
+              method = "error";
+            }
+          }
+        }
+        else { // branch out
+          const nodeIndex = sudokuBoard.findIndex(cell => cell.possibleNumbers.length === 2 && !cell.hasOwnProperty("isForkNode"));
+          if (nodeIndex !== -1) {
+            sudokuBoard[nodeIndex].isForkNode = true;
+            lastParentID = currNode.id;
+            makeBranches(nodeIndex);
+            currNode = currNode.children[0];
+            sudokuBoard = currNode.grid;
           }
           else {
             method = "error";
