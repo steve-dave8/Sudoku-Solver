@@ -1,6 +1,6 @@
 # Sudoku-Solver
 
-[**Codepen Demo**](https://codepen.io/steve-dave108/full/NWzzbpX)
+[**Demo**](https://steve-dave8.github.io/Sudoku-Solver/)
 
 A small program using JavaScript to solve Sudoku puzzles. It can handle Diagonal Sudoku and Diabolical Sudoku puzzles.
 
