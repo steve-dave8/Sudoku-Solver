@@ -24,8 +24,8 @@ class Tree {
         // recurse on each child node
         for (let child of node.children) {
             // if the data is found in any child node it will be returned here
-            if (this.findByID(id, child)) return child;
-        }   
+            if (this.findByID(id, child)) return this.findByID(id, child);
+        }
 
         // otherwise, the data was not found
         return null;
